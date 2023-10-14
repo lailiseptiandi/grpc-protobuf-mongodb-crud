@@ -2,7 +2,7 @@ package gapi
 
 import (
 	"grcp-api-client-mongo/pb"
-	services "grcp-api-client-mongo/services/service-post"
+	"grcp-api-client-mongo/services"
 
 	"go.mongodb.org/mongo-driver/mongo"
 )

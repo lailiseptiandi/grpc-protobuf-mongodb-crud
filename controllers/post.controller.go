@@ -2,7 +2,7 @@ package controllers
 
 import (
 	"grcp-api-client-mongo/models"
-	services "grcp-api-client-mongo/services/service-post"
+	"grcp-api-client-mongo/services"
 	"grcp-api-client-mongo/utils"
 	"net/http"
 	"strconv"
@@ -21,7 +21,6 @@ func NewPostController(postService services.PostService) PostController {
 
 func (pc *PostController) CreatePost(ctx *gin.Context) {
 	var post *models.CreatePostRequest
-
 	err := ctx.ShouldBindJSON(&post)
 	if err != nil {
 		resp := utils.ResponseError(nil, err.Error())

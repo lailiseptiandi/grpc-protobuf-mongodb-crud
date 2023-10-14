@@ -3,7 +3,7 @@ package routes
 import (
 	"context"
 	"grcp-api-client-mongo/controllers"
-	services "grcp-api-client-mongo/services/service-post"
+	"grcp-api-client-mongo/services"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/mongo"
