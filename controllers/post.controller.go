@@ -2,7 +2,7 @@ package controllers
 
 import (
 	"grcp-api-client-mongo/models"
-	"grcp-api-client-mongo/services"
+	services "grcp-api-client-mongo/services/service-post"
 	"grcp-api-client-mongo/utils"
 	"net/http"
 	"strconv"
