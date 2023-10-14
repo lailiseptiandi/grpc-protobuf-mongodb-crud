@@ -10,8 +10,8 @@ import (
 
 	"grcp-api-client-mongo/config"
 
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis/v8"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -23,8 +23,10 @@ var (
 	server      *gin.Engine
 	ctx         context.Context
 	mongoclient *mongo.Client
+	redisclient *redis.Client
 
 	PostRouteController routes.PostRouteController
+	AuthRouteController routes.AuthController
 )
 
 func init() {
@@ -35,7 +37,6 @@ func init() {
 	ctx = context.TODO()
 
 	// Connect to MongoDB
-
 	mongoconn := options.Client().ApplyURI(config.DBUri)
 	mongoclient, err := mongo.Connect(ctx, mongoconn)
 
@@ -49,8 +50,24 @@ func init() {
 	mongoDbName := mongoclient.Database(config.DBNAME)
 	fmt.Println("MongoDB successfully connected")
 
-	PostRouteController = routes.NewPostControllerRoute(mongoDbName)
+	// Connect to Redis
+	redisclient = redis.NewClient(&redis.Options{
+		Addr: config.RedisUri,
+	})
 
+	if _, err := redisclient.Ping(ctx).Result(); err != nil {
+		panic(err)
+	}
+
+	err = redisclient.Set(ctx, "test", "Welcome to Golang with Redis and MongoDB", 0).Err()
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("Redis client connected successfully...")
+
+	PostRouteController = routes.NewPostControllerRoute(mongoDbName)
+	AuthRouteController = routes.NewAuthControllerRoute(mongoDbName)
 	server = gin.Default()
 }
 
@@ -86,17 +103,25 @@ func startGrpcServer(config config.Config) {
 
 func startGinServer(config config.Config) {
 
-	corsConfig := cors.DefaultConfig()
-	corsConfig.AllowOrigins = []string{config.Origin}
-	corsConfig.AllowCredentials = true
+	value, err := redisclient.Get(ctx, "test").Result()
 
-	server.Use(cors.New(corsConfig))
+	if err == redis.Nil {
+		fmt.Println("key: test does not exist")
+	} else if err != nil {
+		panic(err)
+	}
+	// corsConfig := cors.DefaultConfig()
+	// corsConfig.AllowOrigins = []string{config.Origin}
+	// corsConfig.AllowCredentials = true
+
+	// server.Use(cors.New(corsConfig))
 
 	router := server.Group("/api")
 	router.GET("/healthchecker", func(ctx *gin.Context) {
-		ctx.JSON(http.StatusOK, gin.H{"status": "success", "message": "Success get health"})
+		ctx.JSON(http.StatusOK, gin.H{"status": "success", "message": value})
 	})
 
 	PostRouteController.PostRoute(router)
+	AuthRouteController.AuthRoute(router)
 	log.Fatal(server.Run(":" + config.Port))
 }
