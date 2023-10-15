@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"grcp-api-client-mongo/config"
 	"grcp-api-client-mongo/models"
 	"grcp-api-client-mongo/services"
@@ -120,6 +121,59 @@ func (ac *AuthController) LoginUser(ctx *gin.Context) {
 	ctx.SetCookie("logged_in", "true", config.AccessTokenMaxAge*60, "/", "localhost", false, false)
 	formatter := models.FormatterLoginRegister(user, accessToken, refreshToken)
 	resp := utils.ResponseSuccess(formatter, "Successfully login")
+	ctx.JSON(http.StatusOK, resp)
+	return
+}
+
+func (ac *AuthController) RefreshAccessToken(ctx *gin.Context) {
+	message := "could not refresh access token"
+
+	cookie, err := ctx.Cookie("refresh_token")
+	if err != nil {
+		resp := utils.ResponseError(nil, message)
+		ctx.AbortWithStatusJSON(http.StatusForbidden, resp)
+		return
+	}
+
+	config, _ := config.LoadConfig(".")
+	sub, err := utils.ValidateToken(cookie, config.RefreshTokenPublicKey)
+	if err != nil {
+		resp := utils.ResponseError(nil, err.Error())
+		ctx.AbortWithStatusJSON(http.StatusForbidden, resp)
+		return
+	}
+
+	user, err := ac.userService.FindUserById(fmt.Sprint(sub))
+	if err != nil {
+		resp := utils.ResponseError(nil, err.Error())
+		ctx.AbortWithStatusJSON(http.StatusForbidden, resp)
+		return
+	}
+
+	accessToken, err := utils.CreateToken(config.AccessTokenExpiresIn, user, config.AccessTokenPrivateKey)
+	if err != nil {
+		resp := utils.ResponseError(nil, err.Error())
+		ctx.AbortWithStatusJSON(http.StatusForbidden, resp)
+		return
+	}
+	ctx.SetCookie("access_token", accessToken, config.AccessTokenMaxAge*60, "/", "localhost", false, true)
+	ctx.SetCookie("logged_in", "true", config.AccessTokenMaxAge*60, "/", "localhost", false, false)
+
+	formatter := map[string]interface{}{
+		"access_token": accessToken,
+	}
+	resp := utils.ResponseSuccess(formatter, "Successfully refresh token")
+	ctx.JSON(http.StatusOK, resp)
+	return
+
+}
+
+func (ac *AuthController) LogoutUser(ctx *gin.Context) {
+	ctx.SetCookie("access_token", "", -1, "/", "localhost", false, true)
+	ctx.SetCookie("refresh_token", "", -1, "/", "localhost", false, true)
+	ctx.SetCookie("logged_in", "", -1, "/", "localhost", false, true)
+
+	resp := utils.ResponseSuccess(nil, "Successfully Logout")
 	ctx.JSON(http.StatusOK, resp)
 	return
 }

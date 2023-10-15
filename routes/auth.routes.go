@@ -3,6 +3,7 @@ package routes
 import (
 	"context"
 	"grcp-api-client-mongo/controllers"
+	"grcp-api-client-mongo/middleware"
 	"grcp-api-client-mongo/services"
 
 	"github.com/gin-gonic/gin"
@@ -26,5 +27,7 @@ func (r *AuthController) AuthRoute(rg *gin.RouterGroup) {
 	router := rg
 	router.POST("/login", authController.LoginUser)
 	router.POST("/register", authController.RegiserUser)
+	router.GET("/refresh_token", authController.RefreshAccessToken)
+	router.GET("/logout", middleware.AuthMiddleware(userService), authController.LogoutUser)
 
 }
