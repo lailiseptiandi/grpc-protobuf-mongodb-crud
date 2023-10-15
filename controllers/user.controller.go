@@ -19,8 +19,8 @@ func NewUserController(userService services.UserService) UserController {
 
 func (uc *UserController) GetMeProfile(ctx *gin.Context) {
 	currentUser := ctx.MustGet("currentUser").(*models.DBResponseUser)
-
-	resp := utils.ResponseSuccess(currentUser, "Successfully get profile")
+	formatter := models.FilteredResponse(currentUser)
+	resp := utils.ResponseSuccess(formatter, "Successfully get profile")
 	ctx.JSON(http.StatusOK, resp)
 	return
 }

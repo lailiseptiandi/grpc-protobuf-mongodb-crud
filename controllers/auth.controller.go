@@ -235,7 +235,8 @@ func (ac *AuthController) ForgotPassword(ctx *gin.Context) {
 	result, err := ac.collection.UpdateOne(ac.ctx, query, update)
 
 	if result.MatchedCount == 0 {
-		ctx.JSON(http.StatusBadGateway, gin.H{"status": "success", "message": "There was an error sending email"})
+		resp := utils.ResponseError(nil, "There was an error sending email")
+		ctx.JSON(http.StatusBadGateway, resp)
 		return
 	}
 
@@ -264,6 +265,52 @@ func (ac *AuthController) ForgotPassword(ctx *gin.Context) {
 		return
 	}
 	resp := utils.ResponseSuccess(nil, message)
+	ctx.JSON(http.StatusOK, resp)
+	return
+}
+
+func (ac *AuthController) ResetPassword(ctx *gin.Context) {
+	resetToken := ctx.Params.ByName("resetToken")
+	var userCredential *models.ResetPasswordInput
+
+	if err := ctx.ShouldBindJSON(&userCredential); err != nil {
+		resp := utils.ResponseError(nil, err.Error())
+		ctx.JSON(http.StatusBadRequest, resp)
+		return
+	}
+
+	if userCredential.Password != userCredential.PasswordConfirm {
+		resp := utils.ResponseError(nil, "Passwords do not match")
+		ctx.JSON(http.StatusBadRequest, resp)
+		return
+	}
+
+	hashedPassword, _ := utils.HashPassword(userCredential.Password)
+
+	passwordResetToken := utils.Encode(resetToken)
+
+	// Update User in Database
+	query := bson.D{{Key: "passwordResetToken", Value: passwordResetToken}}
+	update := bson.D{{Key: "$set", Value: bson.D{{Key: "password", Value: hashedPassword}}}, {Key: "$unset", Value: bson.D{{Key: "passwordResetToken", Value: ""}, {Key: "passwordResetAt", Value: ""}}}}
+	result, err := ac.collection.UpdateOne(ac.ctx, query, update)
+
+	if result.MatchedCount == 0 {
+		resp := utils.ResponseError(nil, "Token is invalid or has expired")
+		ctx.JSON(http.StatusBadRequest, resp)
+		return
+	}
+
+	if err != nil {
+		resp := utils.ResponseError(nil, err.Error())
+		ctx.JSON(http.StatusForbidden, resp)
+		return
+	}
+
+	ctx.SetCookie("access_token", "", -1, "/", "localhost", false, true)
+	ctx.SetCookie("refresh_token", "", -1, "/", "localhost", false, true)
+	ctx.SetCookie("logged_in", "", -1, "/", "localhost", false, true)
+
+	resp := utils.ResponseError(nil, "Password data updated successfully")
 	ctx.JSON(http.StatusOK, resp)
 	return
 }
