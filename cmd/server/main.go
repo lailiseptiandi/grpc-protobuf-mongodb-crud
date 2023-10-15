@@ -10,6 +10,7 @@ import (
 
 	"grcp-api-client-mongo/config"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -27,6 +28,7 @@ var (
 
 	PostRouteController routes.PostRouteController
 	AuthRouteController routes.AuthController
+	UserRouteController routes.UserRouteController
 )
 
 func init() {
@@ -68,6 +70,7 @@ func init() {
 
 	PostRouteController = routes.NewPostControllerRoute(mongoDbName)
 	AuthRouteController = routes.NewAuthControllerRoute(mongoDbName)
+	UserRouteController = routes.NewRouteUserController(mongoDbName)
 	server = gin.Default()
 }
 
@@ -110,11 +113,11 @@ func startGinServer(config config.Config) {
 	} else if err != nil {
 		panic(err)
 	}
-	// corsConfig := cors.DefaultConfig()
-	// corsConfig.AllowOrigins = []string{config.Origin}
-	// corsConfig.AllowCredentials = true
+	corsConfig := cors.DefaultConfig()
+	corsConfig.AllowOrigins = []string{config.Origin}
+	corsConfig.AllowCredentials = true
 
-	// server.Use(cors.New(corsConfig))
+	server.Use(cors.New(corsConfig))
 
 	router := server.Group("/api")
 	router.GET("/healthchecker", func(ctx *gin.Context) {
@@ -123,5 +126,6 @@ func startGinServer(config config.Config) {
 
 	PostRouteController.PostRoute(router)
 	AuthRouteController.AuthRoute(router)
+	UserRouteController.UserRoute(router)
 	log.Fatal(server.Run(":" + config.Port))
 }
