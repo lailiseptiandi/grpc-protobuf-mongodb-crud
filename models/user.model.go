@@ -83,3 +83,12 @@ func FormatterLoginRegister(user *DBResponseUser, token string, refreshToken str
 	}
 	return formatter
 }
+
+type ForgotPasswordInput struct {
+	Email string `json:"email" binding:"required"`
+}
+
+type ResetPasswordInput struct {
+	Password        string `json:"password" binding:"required"`
+	PasswordConfirm string `json:"passwordConfirm" binding:"required"`
+}

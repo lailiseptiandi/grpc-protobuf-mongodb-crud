@@ -5,6 +5,7 @@ import (
 	"grcp-api-client-mongo/controllers"
 	"grcp-api-client-mongo/middleware"
 	"grcp-api-client-mongo/services"
+	"text/template"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -21,9 +22,11 @@ func NewAuthControllerRoute(mongoDB *mongo.Database) AuthController {
 func (r *AuthController) AuthRoute(rg *gin.RouterGroup) {
 
 	ctx := context.TODO()
+	var tmp *template.Template
+
 	authService := services.NewAuthService(r.mongoDB.Collection("users"), ctx)
 	userService := services.NewUserService(r.mongoDB.Collection("users"), ctx)
-	authController := controllers.NewAuthController(authService, userService)
+	authController := controllers.NewAuthController(authService, userService, ctx, r.mongoDB.Collection("users"), tmp)
 	router := rg
 	router.POST("/login", authController.LoginUser)
 	router.POST("/register", authController.RegiserUser)
